@@ -1,0 +1,78 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.4"
+      - run: uv sync --frozen --extra dev --group runtime --python 3.12
+      - run: uv run --group runtime ruff check .
+      - run: uv run --group runtime mypy api core worker eval scripts/setup_search_index.py scripts/check_image_audit.py
+      - name: Validate infrastructure locally
+        run: |
+          for template in main foundry search registry blob-connection; do
+            az bicep build --file "infra/bicep/$template.bicep" --stdout > "/tmp/$template.json"
+          done
+      - name: Build the delivery stack
+        run: |
+          test ! -e .env.local
+          cp .env.example .env.local
+          docker compose -p candidate-ci -f infra/docker-compose.yml -f infra/compose.test.yml build
+          docker compose -p candidate-ci -f infra/docker-compose.yml -f infra/compose.test.yml up -d --no-build redis qdrant
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:16333/readyz && docker compose -p candidate-ci -f infra/docker-compose.yml exec -T redis redis-cli ping; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - run: uv run --group runtime pytest -q
+        env:
+          RAG_SERVICE_TESTS: "1"
+          REDIS_URL: redis://localhost:16379/15
+          QDRANT_URL: http://localhost:16333
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+      - run: docker run --rm --network none --read-only --tmpfs /tmp:mode=1777 -v "$PWD/scripts/format_smoke.py:/tmp/format_smoke.py:ro" candidate-ci-api python /tmp/format_smoke.py
+      - name: Install pinned image scanner
+        run: |
+          curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
+          echo 'e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7  /tmp/trivy.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
+      - name: Scan all delivery images
+        run: |
+          failed=0
+          for service in api worker redis qdrant; do
+            /tmp/trivy image --scanners vuln,secret --skip-version-check --disable-telemetry --format json --output /tmp/$service-audit.json candidate-ci-$service || failed=1
+            uv run --group runtime python scripts/check_image_audit.py /tmp/$service-audit.json || failed=1
+          done
+          exit "$failed"
+      - name: Remove disposable CI services
+        if: always()
+        run: docker compose -p candidate-ci -f infra/docker-compose.yml -f infra/compose.test.yml down --volumes
+
+  evaluation-dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.4"
+      - run: uv sync --frozen --extra dev --group runtime --python 3.12
+      - run: uv run --group runtime python scripts/build_ragas_text.py --check
+      - run: uv run --group runtime pytest -q tests/test_evaluation_dependency_security.py
+      # Audit lookup cannot assess a local wheel; the preceding patch tests are mandatory.
+      - run: uv run --group runtime pip-audit

@@ -1,0 +1,73 @@
+# --- secrets / env ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# --- test / eval artifacts ---
+.coverage
+htmlcov/
+
+# --- local data / models ---
+*.sqlite3
+qdrant_storage/
+ollama_data/
+*.gguf
+.cache/
+huggingface/
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- IaC ---
+*.tfstate
+*.tfstate.*
+.terraform/
+infra/bicep/**/*.json.bak
+
+# --- IDE / OS ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- misc ---
+*.log
+tmp/
+
+# --- golden eval ---
+eval/golden_set.jsonl
+eval/baseline_scores.json
+
+# Private evidence and local evaluation outputs
+.private/
+eval/results/
+eval/checkpoints/
+
+# Credential variants are local; only the placeholder template is distributable.
+.env*
+!.env.example
+
+# Additional placeholder templates and private deployment inputs
+!.env.azure.example
+*.parameters.local.json
+*.bicepparam.local
+artifacts/
+reports/

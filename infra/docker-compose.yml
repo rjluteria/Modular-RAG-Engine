@@ -1,0 +1,95 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --no-access-log
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: ${RAG_ENV_FILE:-../.env.local}
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      UPLOAD_DIR: /app/tmp/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+    mem_limit: 2g
+    pids_limit: 256
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:mode=1777,size=268435456"]
+    volumes:
+      - uploads:/app/tmp/uploads
+      - model_cache:/home/nonroot/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    command: python -m worker.rq_worker
+    env_file: ${RAG_ENV_FILE:-../.env.local}
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      UPLOAD_DIR: /app/tmp/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+    mem_limit: 2g
+    pids_limit: 256
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:mode=1777,size=268435456"]
+    volumes:
+      - uploads:/app/tmp/uploads
+      - model_cache:/home/nonroot/.cache/huggingface
+  redis:
+    build:
+      context: ..
+      dockerfile: infra/Redis.Dockerfile
+    command: redis-server --appendonly yes --appendfsync always --maxmemory 512mb --maxmemory-policy noeviction
+    mem_limit: 768m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:mode=1777,size=67108864"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  qdrant:
+    build:
+      context: ..
+      dockerfile: infra/Qdrant.Dockerfile
+    mem_limit: 2g
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:mode=1777,size=268435456"]
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+volumes:
+  qdrant_data:
+  qdrant_snapshots:
+  redis_data:
+  uploads:
+  model_cache:

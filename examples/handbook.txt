@@ -1,0 +1,5 @@
+Synthetic shipping handbook
+
+The shipping limit is 42 units per order.
+Orders above 42 units require a separate review.
+This fictional document is supplied only to demonstrate ingestion and retrieval.

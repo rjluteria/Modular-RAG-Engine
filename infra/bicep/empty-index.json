@@ -1,0 +1,52 @@
+{
+  "name": "rag-chunks",
+  "fields": [
+    {
+      "name": "id",
+      "type": "Edm.String",
+      "key": true,
+      "filterable": true
+    },
+    {
+      "name": "content",
+      "type": "Edm.String",
+      "searchable": true
+    },
+    {
+      "name": "source_key",
+      "type": "Edm.String",
+      "filterable": true
+    },
+    {
+      "name": "revision",
+      "type": "Edm.String",
+      "filterable": true
+    },
+    {
+      "name": "use_case",
+      "type": "Edm.String",
+      "filterable": true
+    },
+    {
+      "name": "vector",
+      "type": "Collection(Edm.Single)",
+      "searchable": true,
+      "dimensions": 1536,
+      "vectorSearchProfile": "hybrid"
+    }
+  ],
+  "vectorSearch": {
+    "algorithms": [
+      {
+        "name": "hnsw",
+        "kind": "hnsw"
+      }
+    ],
+    "profiles": [
+      {
+        "name": "hybrid",
+        "algorithm": "hnsw"
+      }
+    ]
+  }
+}

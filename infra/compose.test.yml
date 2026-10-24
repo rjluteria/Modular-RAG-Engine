@@ -1,0 +1,6 @@
+# Optional loopback ports for disposable test projects only.
+services:
+  redis:
+    ports: ["127.0.0.1:16379:6379"]
+  qdrant:
+    ports: ["127.0.0.1:16333:6333"]

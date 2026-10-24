@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if git ls-files --error-unmatch AGENTS.md >/dev/null 2>&1; then
+  echo 'Local agent instructions must never be tracked.' >&2
+  exit 1
+fi
+command -v gitleaks >/dev/null || { echo 'Install gitleaks before committing.' >&2; exit 1; }
+git diff --cached --no-ext-diff --binary | gitleaks stdin --redact --no-banner

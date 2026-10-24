@@ -1,0 +1,81 @@
+[project]
+name = "modular-rag-engine"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-multipart>=0.0.9",
+    "langchain>=0.3",
+    "langchain-classic>=1.0",
+    "langchain-core>=0.3",
+    "langchain-text-splitters>=0.3",
+    "langchain-community>=0.3",
+    "langchain-huggingface>=0.1",
+    "langchain-openai>=0.2",
+    "langchain-qdrant>=0.2",
+    "langchain-ollama>=0.2",
+    "qdrant-client>=1.11",
+    "rank-bm25>=0.2.2",
+    "pdfplumber>=0.11.10",
+    "pypdf>=6.21.2",
+    "python-docx>=1.2",
+    "beautifulsoup4>=4.14",
+    "sentence-transformers>=3.1",
+    "torch>=2.2",
+    "redis>=5.0",
+    "rq>=1.16",
+    "azure-ai-documentintelligence>=1.0",
+    "azure-search-documents>=11.5",
+    "azure-servicebus>=7.12",
+    "azure-identity>=1.17",
+    "azure-monitor-opentelemetry>=1.6",
+    "structlog>=24.4",
+    "azure-storage-blob>=12.31.0",
+]
+
+[project.optional-dependencies]
+legacy-parser = ["unstructured[all-docs]>=0.27.27"]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "ragas==0.4.3.post2",
+    "datasets>=2.21",
+    "httpx>=0.28",
+    "pip-audit>=2.9",
+]
+
+[dependency-groups]
+runtime = ["filelock>=4.2.1", "setuptools>=84.1.0,<85"]
+
+[tool.uv]
+conflicts = [[{extra = "legacy-parser"}, {group = "runtime"}]]
+
+[build-system]
+requires = ["setuptools>=84.1.0,<85"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["api*", "core*", "worker*", "eval*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.uv.sources]
+ragas = { path = "vendor/ragas/ragas-0.4.3.post2-py3-none-any.whl" }
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

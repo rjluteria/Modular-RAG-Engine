@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if git log --all --format= --name-only -- AGENTS.md | grep -q .; then
+  echo 'Local agent instructions are present in history; refusing push.' >&2
+  exit 1
+fi
+command -v gitleaks >/dev/null || { echo 'Install gitleaks before pushing.' >&2; exit 1; }
+gitleaks git . --redact --no-banner
